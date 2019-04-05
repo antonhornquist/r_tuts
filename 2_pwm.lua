@@ -3,7 +3,7 @@
 
 engine.name = 'R'
 
-local R = require 'we/lib/r'
+local R = require 'r/lib/r'
 local Formatters = require 'formatters'
 
 function init()
