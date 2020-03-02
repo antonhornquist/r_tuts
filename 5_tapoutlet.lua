@@ -1,4 +1,4 @@
--- scriptname: 5_visuals
+-- scriptname: 5_tapoutlet
 -- v1.0.0 @jah
 
 engine.name = 'R'
@@ -222,7 +222,7 @@ function redraw()
   screen.fill()
   screen.level(15)
   screen.move(0, 10)
-  screen.text("VISUALS")
+  screen.text("TAPOUTLET")
   screen.move(0, 30)
   -- screen.text("See params in menu")
   screen.update()
