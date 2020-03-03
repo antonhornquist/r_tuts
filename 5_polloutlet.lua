@@ -1,4 +1,4 @@
--- scriptname: 5_tapoutlet
+-- scriptname: 5_polloutlet
 -- v1.0.0 @jah
 
 engine.name = 'R'
@@ -24,18 +24,18 @@ function init()
 
   engine.set("Osc.FM", 1)
 
-  engine.connect("FreqGate/Frequency", "Osc/FM")
-  engine.connect("FreqGate/Gate", "Env/Gate")
-  engine.connect("LFO/Sine", "Osc/PWM")
-  engine.connect("LFO/Sine", "FilterMod/In1")
-  engine.connect("Env/Out", "FilterMod/In2")
-  engine.connect("Env/Out", "Amp/Lin")
-  engine.connect("FilterMod/Out", "Filter/FM")
+  engine.connect("FreqGate/Frequency", "Osc*FM")
+  engine.connect("FreqGate/Gate", "Env*Gate")
+  engine.connect("LFO/Sine", "Osc*PWM")
+  engine.connect("LFO/Sine", "FilterMod*In1")
+  engine.connect("Env/Out", "FilterMod*In2")
+  engine.connect("Env/Out", "Amp*Lin")
+  engine.connect("FilterMod/Out", "Filter*FM")
 
-  engine.connect("Osc/Out", "Filter/In")
-  engine.connect("Filter/Lowpass", "Amp/In")
-  engine.connect("Amp/Out", "SoundOut/Left")
-  engine.connect("Amp/Out", "SoundOut/Right")
+  engine.connect("Osc/Out", "Filter*In")
+  engine.connect("Filter/Lowpass", "Amp*In")
+  engine.connect("Amp/Out", "SoundOut*Left")
+  engine.connect("Amp/Out", "SoundOut*Right")
 
   engine.polloutlet(0, "LFO/Sine") -- TODO: should be indexed from 1
 

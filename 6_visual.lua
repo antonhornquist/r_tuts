@@ -1,5 +1,5 @@
--- scriptname: 4_voice
--- v1.1.0 @jah
+-- scriptname: 6_visual
+-- v1.0.0 @jah
 
 engine.name = 'R'
 
@@ -36,6 +36,8 @@ function init()
   engine.connect("Filter/Lowpass", "Amp*In")
   engine.connect("Amp/Out", "SoundOut*Left")
   engine.connect("Amp/Out", "SoundOut*Right")
+
+  engine.pollvisual(0, "Filter=Frequency") -- TODO: should be indexed from 1
 
   local midi_note_list = {}
   for i=0,127 do
@@ -188,15 +190,41 @@ function init()
   engine.set("Filter.FM", 1)
 
   params:bang()
+
+  val = 0
+  local poll = poll.set("tap1", function(value)
+    val = util.round((value*4+1)/2*64)
+    redraw()
+  end)
+  poll:start()
+
+
+  local screen_refresh_metro = metro.init()
+  screen_refresh_metro.event = function()
+    if screen_dirty then
+      screen_dirty = false
+      redraw()
+    end
+  end
+
+  local SCREEN_FRAMERATE = 15
+  screen_refresh_metro:start(1 / SCREEN_FRAMERATE)
 end
 
 function redraw()
   screen.clear()
+  if not x or x > 128 then
+    x = 0
+  else
+    x = x + 1
+  end
+  screen.rect(x, val, 2, 2)
+  screen.fill()
   screen.level(15)
   screen.move(0, 10)
-  screen.text("VOICE")
+  screen.text("TAPOUTLET")
   screen.move(0, 30)
-  screen.text("See params in menu")
+  -- screen.text("See params in menu")
   screen.update()
 end
 

@@ -11,9 +11,9 @@ function init()
   engine.new("Osc", "PulseOsc")
   engine.new("SoundOut", "SoundOut")
 
-  engine.connect("LFO/Sine", "Osc/PWM")
-  engine.connect("Osc/Out", "SoundOut/Left")
-  engine.connect("Osc/Out", "SoundOut/Right")
+  engine.connect("LFO/Sine", "Osc*PWM")
+  engine.connect("Osc/Out", "SoundOut*Left")
+  engine.connect("Osc/Out", "SoundOut*Right")
 
   local lfo_frequency_spec = R.specs.MultiLFO.Frequency:copy()
   lfo_frequency_spec.default = 0.2

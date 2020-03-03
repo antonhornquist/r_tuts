@@ -10,8 +10,8 @@ function init()
   engine.new("Osc", "PulseOsc")
   engine.new("SoundOut", "SoundOut")
 
-  engine.connect("Osc/Out", "SoundOut/Left")
-  engine.connect("Osc/Out", "SoundOut/Right")
+  engine.connect("Osc/Out", "SoundOut*Left")
+  engine.connect("Osc/Out", "SoundOut*Right")
 
   params:add {
     type="control",
