@@ -37,7 +37,7 @@ function init()
   engine.connect("Amp/Out", "SoundOut/Left")
   engine.connect("Amp/Out", "SoundOut/Right")
 
-  engine.tapoutlet(0, "LFO/Sine") -- TODO: should be indexed from 1
+  engine.polloutlet(0, "LFO/Sine") -- TODO: should be indexed from 1
 
   local midi_note_list = {}
   for i=0,127 do

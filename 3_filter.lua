@@ -12,13 +12,13 @@ function init()
   engine.new("Filter", "MMFilter")
   engine.new("SoundOut", "SoundOut")
 
-  engine.connect("LFO/Sine", "Osc/PWM")
-  engine.connect("LFO/Sine", "Filter/FM")
+  engine.connect("LFO/Sine", "Osc*PWM")
+  engine.connect("LFO/Sine", "Filter*FM")
 
-  engine.connect("Osc/Out", "Filter/In")
+  engine.connect("Osc/Out", "Filter*In")
 
-  engine.connect("Filter/Lowpass", "SoundOut/Left")
-  engine.connect("Filter/Lowpass", "SoundOut/Right")
+  engine.connect("Filter/Lowpass", "SoundOut*Left")
+  engine.connect("Filter/Lowpass", "SoundOut*Right")
 
   local lfo_frequency_spec = R.specs.MultiLFO.Frequency:copy()
   lfo_frequency_spec.default = 0.2
