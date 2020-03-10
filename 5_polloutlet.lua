@@ -37,7 +37,7 @@ function init()
   engine.connect("Amp/Out", "SoundOut*Left")
   engine.connect("Amp/Out", "SoundOut*Right")
 
-  engine.polloutlet(0, "LFO/Sine") -- TODO: should be indexed from 1
+  engine.polloutlet(1, "LFO/Sine") -- 1-based indexing
 
   local midi_note_list = {}
   for i=0,127 do
@@ -192,7 +192,7 @@ function init()
   params:bang()
 
   val = 0
-  local poll = poll.set("tap1", function(value)
+  local poll = poll.set("poll1", function(value)
     val = util.round((value*4+1)/2*64)
     redraw()
   end)
@@ -206,7 +206,7 @@ function init()
       redraw()
     end
   end
-                                  
+
   local SCREEN_FRAMERATE = 15
   screen_refresh_metro:start(1 / SCREEN_FRAMERATE)
 end

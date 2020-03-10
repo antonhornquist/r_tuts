@@ -1,3 +1,4 @@
+-- TODO
 -- scriptname: 6_visual
 -- v1.0.0 @jah
 
@@ -37,7 +38,7 @@ function init()
   engine.connect("Amp/Out", "SoundOut*Left")
   engine.connect("Amp/Out", "SoundOut*Right")
 
-  engine.pollvisual(0, "Filter=Frequency") -- TODO: should be indexed from 1
+  engine.pollvisual(1, "Filter=Frequency") -- 1-based indexing
 
   local midi_note_list = {}
   for i=0,127 do
@@ -192,7 +193,7 @@ function init()
   params:bang()
 
   val = 0
-  local poll = poll.set("tap1", function(value)
+  local poll = poll.set("poll1", function(value)
     val = util.round((value*4+1)/2*64)
     redraw()
   end)
