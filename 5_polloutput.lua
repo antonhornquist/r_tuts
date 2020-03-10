@@ -6,6 +6,7 @@ engine.name = 'R'
 local R = require 'r/lib/r'
 local Option = require 'params/option'
 local Formatters = require 'formatters'
+local ControlSpec = require 'controlspec'
 
 local function to_hz(note)
   local exp = (note - 21) / 12
@@ -191,9 +192,11 @@ function init()
 
   params:bang()
 
+  local screen_y_spec = ControlSpec.new(64, 0, 'lin', 1)
+  local lfo_sine_output_spec = ControlSpec.new(-0.25, 0.25, 'lin') -- TODO: should be in r.lua
   val = 0
   local poll1 = poll.set("poll1", function(value)
-    val = util.round((value*4+1)/2*64)
+    val = screen_y_spec:map(lfo_sine_output_spec:unmap(value))
     redraw()
   end)
   poll1:start()
