@@ -15,20 +15,20 @@ r.newCommand("SoundOut", "SoundOut");
 
 r.setCommand("Osc.FM", 1);
 
-r.connectCommand("FreqGate/Frequency", "Osc*FM")
-r.connectCommand("FreqGate/Gate", "Env*Gate")
-r.connectCommand("LFO/Sine", "Osc*PWM")
-r.connectCommand("LFO/Sine", "FilterMod*In1")
-r.connectCommand("Env/Out", "FilterMod*In2")
-r.connectCommand("Env/Out", "Amp*Lin")
-r.connectCommand("FilterMod/Out", "Filter*FM")
+r.connectCommand("FreqGate/Frequency", "Osc*FM");
+r.connectCommand("FreqGate/Gate", "Env*Gate");
+r.connectCommand("LFO/Sine", "Osc*PWM");
+r.connectCommand("LFO/Sine", "FilterMod*In1");
+r.connectCommand("Env/Out", "FilterMod*In2");
+r.connectCommand("Env/Out", "Amp*Lin");
+r.connectCommand("FilterMod/Out", "Filter*FM");
 
-r.connectCommand("Osc/Out", "Filter*In")
-r.connectCommand("Filter/Lowpass", "Amp*In")
-r.connectCommand("Amp/Out", "SoundOut*Left")
-r.connectCommand("Amp/Out", "SoundOut*Right")
+r.connectCommand("Osc/Out", "Filter*In");
+r.connectCommand("Filter/Lowpass", "Amp*In");
+r.connectCommand("Amp/Out", "SoundOut*Left");
+r.connectCommand("Amp/Out", "SoundOut*Right");
 
-r.tapoutletCommand(0, "LFO/Sine") // zero based indexing, TODO: test
+r.tapoutletCommand(0, "LFO/Sine"); // zero based indexing, TODO: test
 
 r.setCommand("FilterMod.Out", 1)
 r.setCommand("Filter.FM", 1)
