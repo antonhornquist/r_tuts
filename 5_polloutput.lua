@@ -1,4 +1,4 @@
--- scriptname: 5_polloutlet
+-- scriptname: 5_polloutput
 -- v1.0.0 @jah
 
 engine.name = 'R'
@@ -37,7 +37,7 @@ function init()
   engine.connect("Amp/Out", "SoundOut*Left")
   engine.connect("Amp/Out", "SoundOut*Right")
 
-  engine.polloutlet(1, "LFO/Sine") -- 1-based indexing
+  engine.polloutput(1, "LFO/Sine") -- 1-based indexing
 
   local midi_note_list = {}
   for i=0,127 do
