@@ -192,11 +192,11 @@ function init()
   params:bang()
 
   val = 0
-  local poll = poll.set("poll1", function(value)
+  local poll1 = poll.set("poll1", function(value)
     val = util.round((value*4+1)/2*64)
     redraw()
   end)
-  poll:start()
+  poll1:start()
 
 
   local screen_refresh_metro = metro.init()
