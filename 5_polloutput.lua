@@ -192,7 +192,7 @@ function init()
 
   params:bang()
 
-  local screen_y_spec = ControlSpec.new(64, 0, 'lin', 1)
+  local screen_y_spec = ControlSpec.new(60, 5, 'lin', 1)
   local lfo_sine_output_spec = ControlSpec.new(-0.25, 0.25, 'lin') -- TODO: should be in r.lua
   val = 0
   local poll1 = poll.set("poll1", function(value)
