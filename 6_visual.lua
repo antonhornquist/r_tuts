@@ -193,7 +193,7 @@ function init()
   params:bang()
 
   local screen_y_spec = ControlSpec.new(64, 0, 'lin', 1)
-  local frequency_visual_spec = R.specs.MMFilter.Frequency -- TODO: should be a visual spec
+  local frequency_visual_spec = R.specs.MMFilter.Frequency
   val = 0
   local poll1 = poll.set("poll1", function(value)
     val = screen_y_spec:map(frequency_visual_spec:unmap(value))
