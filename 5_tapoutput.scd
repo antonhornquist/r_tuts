@@ -28,7 +28,7 @@ r.connectCommand("Filter/Lowpass", "Amp*In");
 r.connectCommand("Amp/Out", "SoundOut*Left");
 r.connectCommand("Amp/Out", "SoundOut*Right");
 
-r.tapoutletCommand(0, "LFO/Sine"); // zero based indexing, TODO: test
+r.tapoutletCommand(1, "LFO/Sine"); // zero based indexing, TODO: test
 
 r.setCommand("FilterMod.Out", 1)
 r.setCommand("Filter.FM", 1)

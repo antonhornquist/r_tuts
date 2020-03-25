@@ -28,7 +28,7 @@ r.connectCommand("Filter/Lowpass", "Amp*In")
 r.connectCommand("Amp/Out", "SoundOut*Left")
 r.connectCommand("Amp/Out", "SoundOut*Right")
 
-r.getVisualBus("LFO=Out").get // TODO: test
+r.getVisualBus("LFO=Out").get
 
 r.setCommand("FilterMod.Out", 1)
 r.setCommand("Filter.FM", 1)
