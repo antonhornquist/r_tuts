@@ -1,4 +1,3 @@
--- TODO
 -- scriptname: 6_visual
 -- v1.0.0 @jah
 
