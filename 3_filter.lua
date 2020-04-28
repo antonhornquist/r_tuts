@@ -110,9 +110,9 @@ end
 function redraw()
   screen.clear()
   screen.level(15)
-  screen.move(0, 10)
+  screen.move(1, 10)
   screen.text("FILTER")
-  screen.move(0, 30)
+  screen.move(1, 30)
   screen.text("See params in menu")
   screen.update()
 end
