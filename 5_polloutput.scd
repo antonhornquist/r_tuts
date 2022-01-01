@@ -17,7 +17,7 @@ var start_script = norns_engine_tester['start_script'];
 var script_name = PathName(thisProcess.nowExecutingPath).fileNameWithoutExtension;
 
 start_script.value(script_name) {
-	// scriptname: 6_pollvisual
+	// scriptname: 5_polloutput
 	// v1.1.0 @jah
 	var formatters = include_relative.value(lib_root_relative +/+ "formatters.scd");
 
@@ -31,7 +31,7 @@ start_script.value(script_name) {
 
 	~init = {
 		var screen_y_spec;
-		var frequency_visual_spec;
+		var lfo_sine_output_spec;
 		var poll1;
 
 /*
@@ -44,7 +44,6 @@ start_script.value(script_name) {
 		~engine.new_("LFO2", "MultiLFO");
 		~engine.new_("Mixer", "LinMixer");
 		~engine.new_("Osc", "PulseOsc");
-		~engine.new_("Filter", "MMFilter");
 		~engine.new_("Amplifier", "MGain");
 		~engine.new_("SoundOut", "SoundOut");
 
@@ -52,16 +51,15 @@ start_script.value(script_name) {
 		~lfo2_shape = 'InvSaw';
 		~set_lfo_shapes.value;
 
-		~engine.connect_("Mixer/Out", "Filter*FM");
-		~engine.connect_("Osc/Out", "Filter*In");
-		~engine.connect_("Filter/Lowpass", "Amplifier*In");
+		~engine.connect_("Mixer/Out", "Osc*FM");
+		~engine.connect_("Osc/Out", "Amplifier*In");
 		~engine.connect_("Amplifier/Out", "SoundOut*Left");
 		~engine.connect_("Amplifier/Out", "SoundOut*Right");
 
 		~engine.set_("LFO2.Frequency", 0.25);
-		~engine.set_("Filter.FM", 1);
+		~engine.set_("Osc.FM", 1);
 
-		~engine.pollvisual_(1, "Filter=Frequency");
+		~engine.polloutput_(1, "Mixer/Out");
 
 /*
 		lfo_to_filter_fm_spec = r_specs['LinMixer']['In1'].copy();
@@ -83,10 +81,10 @@ start_script.value(script_name) {
 		~params.bang_();
 
 		screen_y_spec = ControlSpec.new(60, 5, 'lin', 1);
-		frequency_visual_spec = r_specs['MMFilter']['Frequency'];
+		lfo_sine_output_spec = ControlSpec.new(-0.25, 0.25, 'lin');
 		val = 0;
 		poll1 = ~poll.set_("poll1") { |value|
-			val = screen_y_spec.map(frequency_visual_spec.unmap(value));
+			val = screen_y_spec.map(lfo_sine_output_spec.unmap(value));
 			~redraw.value();
 		};
 		poll1.time_ = 1/25;
@@ -105,7 +103,6 @@ start_script.value(script_name) {
 		screen_framerate = 15;
 		screen_refresh_metro.start_(1 / screen_framerate);
 */
-
 	};
 
 	~add_output_level_param = {
@@ -153,7 +150,7 @@ start_script.value(script_name) {
 		~screen.fill_();
 		~screen.level_(15);
 		~screen.move_(1, 10);
-		~screen.text_("VISUAL");
+		~screen.text_("POLLOUTPUT");
 		~screen.move_(1, 30);
 		// ~screen.text_("See params in menu");
 		~screen.update_();

@@ -1,63 +1,122 @@
 (
-s.waitForBoot {r=Rrrr.new};
+var include_relative = { |relative_path|
+	var path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
+	if (File.exists(path)) {
+		var result = this.executeFile(path);
+		if (result.isNil) { Error("error importing %".format(path)).throw; } { result };
+	} {
+		Error("include_relative: file % does not exist".format(path.quote)).throw;
+	};
+};
+
+var r_engine_root_relative = ".." +/+ ".." +/+ "r";
+
+var lib_root_relative = ".." +/+ "lib";
+var norns_engine_tester = include_relative.value(lib_root_relative +/+ "norns_engine_tester.scd");
+var start_script = norns_engine_tester['start_script'];
+var script_name = PathName(thisProcess.nowExecutingPath).fileNameWithoutExtension;
+
+start_script.value(script_name) {
+	// scriptname: 1_square
+	// v1.1.0 @jah
+	var formatters = include_relative.value(lib_root_relative +/+ "formatters.scd");
+
+	var rrrr = include_relative.value(r_engine_root_relative +/+ "lib" +/+ "r.scd");
+	var r_specs = rrrr[\specs];
+
+	~engine.name = 'R';
+
+	~init = {
+		~engine.new_("Osc", "PulseOsc");
+		~engine.new_("Amplifier", "MGain");
+		~engine.new_("SoundOut", "SoundOut");
+
+		~engine.connect_("Osc/Out", "Amplifier*In");
+		~engine.connect_("Amplifier/Out", "SoundOut*Left");
+		~engine.connect_("Amplifier/Out", "SoundOut*Right");
+
+		~add_osc_range_param.value();
+		~add_osc_tune_param.value();
+		~add_osc_pulsewidth_param.value();
+		~add_output_level_param.value();
+
+		~params.bang_();
+	};
+
+	~add_osc_range_param = {
+		~params.add_(
+			(
+				type: "control",
+				id: "osc_range",
+				name: "Osc.Range",
+				controlspec: r_specs['PulseOsc']['Range'],
+				action: { |value| ~engine.set_("Osc.Range", value) }
+			)
+		);
+	};
+
+	~add_osc_tune_param = {
+		~params.add_(
+			(
+				type: "control",
+				id: "osc_tune",
+				name: "Osc.Tune",
+				controlspec: r_specs['PulseOsc']['Tune'],
+				action: { |value| ~engine.set_("Osc.Tune", value) }
+			)
+		);
+	};
+
+	~add_osc_pulsewidth_param = {
+		~params.add_(
+			(
+				type: "control",
+				id: "osc_pulsewidth",
+				name: "Osc.PulseWidth",
+				controlspec: r_specs['PulseOsc']['PulseWidth'],
+				formatter: formatters['percentage'],
+				action: { |value| ~engine.set_("Osc.PulseWidth", value) }
+			)
+		);
+	};
+
+	~add_output_level_param = {
+		var spec = r_specs['MGain']['Gain'].copy;
+		spec.default = -10;
+
+		~params.add_(
+			(
+				type: "control",
+				id: "output_level",
+				name: "Amplifier.Gain",
+				controlspec: spec,
+				formatter: formatters.round_(0.1),
+				action: { |value| ~engine.set_("Amplifier.Gain", value) }
+			)
+		);
+	};
+
+	~redraw = {
+		~screen.clear_();
+		~screen.level_(15);
+		~screen.move_(1, 10);
+		~screen.text_("SQUARE");
+		~screen.move_(1, 30);
+		~screen.text_("See params in menu");
+		~screen.update_();
+	};
+
+	~enc = { |n, delta|
+		case
+		{n == 1} {
+			~params.delta_("output_level", delta);
+		}
+		{n == 2} {
+			~params.delta_("osc_range", delta);
+		}
+		{n == 3} {
+			~params.delta_("osc_pulsewidth", delta);
+		};
+	};
+};
 )
-
-r.newCommand("Osc", "PulseOsc");
-r.newCommand("SoundOut", "SoundOut");
-
-r.connectCommand("Osc/Out", "SoundOut*Left");
-r.connectCommand("Osc/Out", "SoundOut*Right");
-
-r.setCommand("Osc.Range", -1);
-r.setCommand("Osc.Range", 0);
-r.setCommand("Osc.Range", -2);
-
-r.setCommand("Osc.Tune", -600);
-r.setCommand("Osc.Tune", 423);
-r.setCommand("Osc.Tune", 0);
-
-r.setCommand("Osc.PulseWidth", 0.25);
-r.setCommand("Osc.PulseWidth", 0.5);
-r.setCommand("Osc.PulseWidth", 0.75);
-
-(
-var init, free, newCommand, connectCommand, disconnectCommand, deleteCommand, setCommand, bulksetCommand, newmacroCommand, deletemacroCommand, macrosetCommand, readsampleCommand, tapoutputCommand, tapclearCommand, getTapBus, getVisualBus;
-# init, free, newCommand, connectCommand, disconnectCommand, deleteCommand, setCommand, bulksetCommand, newmacroCommand, deletemacroCommand, macrosetCommand, readsampleCommand, tapoutputCommand, tapclearCommand, getTapBus, getVisualBus = RrrrScd.spawn;
-~init = init;
-~free = free;
-~new = newCommand;
-~connect = connectCommand;
-~disconnect = disconnectCommand;
-~delete = deleteCommand;
-~set = setCommand;
-~bulkset = bulksetCommand;
-~newmacro = newmacroCommand;
-~deletemacro = deletemacroCommand;
-~macroset = macrosetCommand;
-~readsample = readsampleCommand;
-~tapoutput = tapoutputCommand;
-~tapclear = tapclearCommand;
-~getTapBus = getTapBus;
-~getVisualBus = getVisualBus;
-
-s.waitForBoot {r=init.()};
-)
-
-~new.(r, "Osc", "PulseOsc");
-~new.(r, "SoundOut", "SoundOut");
-
-~connect.(r, "Osc/Out", "SoundOut*Left");
-~connect.(r, "Osc/Out", "SoundOut*Right");
-
-~set.(r, "Osc.Range", -1);
-~set.(r, "Osc.Range", 0);
-~set.(r, "Osc.Range", -2);
-
-~set.(r, "Osc.Tune", -600)
-~set.(r, "Osc.Tune", 423)
-~set.(r, "Osc.Tune", 0)
-
-~set.(r, "Osc.PulseWidth", 0.25);
-~set.(r, "Osc.PulseWidth", 0.5);
-~set.(r, "Osc.PulseWidth", 0.75);
-
