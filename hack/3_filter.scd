@@ -3,7 +3,7 @@ var include_relative = { |relative_path|
 	var path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
 	if (File.exists(path)) {
 		var result = this.executeFile(path);
-		if (result.isNil) { Error("error importing %".format(path)).throw; } { result }; // TODO: adopt in other places too
+		if (result.isNil) { Error("error importing %".format(path)).throw; } { result };
 	} {
 		Error("include_relative: file % does not exist".format(path.quote)).throw;
 	};
@@ -11,35 +11,44 @@ var include_relative = { |relative_path|
 
 var r_engine_root_relative = ".." +/+ ".." +/+ "r";
 
-var lib_root_relative = ".." +/+ "lib";
+var lib_root_relative = "lib";
 var norns_engine_tester = include_relative.value(lib_root_relative +/+ "norns_engine_tester.scd");
 var start_script = norns_engine_tester['start_script'];
 var script_name = PathName(thisProcess.nowExecutingPath).fileNameWithoutExtension;
 
 start_script.value(script_name) {
-	// scriptname: 2_pwm
+	// scriptname: 3_filter
 	// v1.1.0 @jah
 	var formatters = include_relative.value(lib_root_relative +/+ "formatters.scd");
 
 	var rrrr = include_relative.value(r_engine_root_relative +/+ "lib" +/+ "r.scd");
-	var r_specs = rrrr[\specs];
+	var rrrr_lib = rrrr[\lib];
+	var r_specs = rrrr_lib[\specs];
 
 	~engine.name = 'R';
 
 	~init = {
 		~engine.new_("LFO", "MultiLFO");
 		~engine.new_("Osc", "PulseOsc");
+		~engine.new_("Filter", "MMFilter");
 		~engine.new_("Amplifier", "MGain");
 		~engine.new_("SoundOut", "SoundOut");
 
 		~engine.connect_("LFO/Sine", "Osc*PWM");
-		~engine.connect_("Osc/Out", "Amplifier*In");
+		~engine.connect_("LFO/Sine", "Filter*FM");
+
+		~engine.connect_("Osc/Out", "Filter*In");
+
+		~engine.connect_("Filter/Lowpass", "Amplifier*In");
 		~engine.connect_("Amplifier/Out", "SoundOut*Left");
 		~engine.connect_("Amplifier/Out", "SoundOut*Right");
 
 		~add_osc_range_param.value();
 		~add_lfo_frequency_param.value();
 		~add_lfo_to_osc_pwm_param.value();
+		~add_filter_frequency_param.value();
+		~add_filter_resonance_param.value();
+		~add_lfo_to_filter_fm_param.value();
 		~add_osc_tune_param.value();
 		~add_osc_pulsewidth_param.value();
 		~add_output_level_param.value();
@@ -93,6 +102,59 @@ start_script.value(script_name) {
 		);
 	};
 
+	~add_filter_frequency_param = {
+		var spec;
+		spec = r_specs['MMFilter']['Frequency'].copy();
+		spec.default = 2000;
+
+		~params.add_(
+			(
+				type: "control",
+				id: "filter_frequency",
+				name: "Filter.Frequency",
+				controlspec: spec,
+				action: { |value| ~engine.set_("Filter.Frequency", value) }
+			)
+		);
+
+	};
+
+	~add_filter_resonance_param = {
+		var spec;
+		spec = r_specs['MMFilter']['Resonance'].copy();
+		spec.default = 0.4;
+
+		~params.add_(
+			(
+				type: "control",
+				id: "filter_resonance",
+				name: "Filter.Resonance",
+				controlspec: spec,
+				formatter: formatters['percentage'],
+				action: { |value| ~engine.set_("Filter.Resonance", value) }
+			)
+		);
+
+	};
+
+	~add_lfo_to_filter_fm_param = {
+		var spec;
+		spec = r_specs['MMFilter']['FM'].copy();
+		spec.default = 0.4;
+
+		~params.add_(
+			(
+				type: "control",
+				id: "lfo_to_filter_fm",
+				name: "LFO > Filter.FM",
+				controlspec: spec,
+				formatter: formatters['percentage'],
+				action: { |value| ~engine.set_("Filter.FM", value) }
+			)
+		);
+
+	};
+
 	~add_osc_tune_param = {
 		~params.add_(
 			(
@@ -138,7 +200,7 @@ start_script.value(script_name) {
 		~screen.clear_();
 		~screen.level_(15);
 		~screen.move_(1, 10);
-		~screen.text_("PWM");
+		~screen.text_("FILTER");
 		~screen.move_(1, 30);
 		~screen.text_("See params in menu");
 		~screen.update_();
@@ -153,7 +215,7 @@ start_script.value(script_name) {
 			~params.delta_("lfo_frequency", delta);
 		}
 		{n == 3} {
-			~params.delta_("lfo_to_osc_pwm", delta);
+			~params.delta_("lfo_to_filter_fm", delta);
 		};
 	};
 };

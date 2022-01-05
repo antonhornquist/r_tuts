@@ -1332,7 +1332,7 @@ namespaces.r_engine = {
 				\delete -> { |self, moduleRef|
 					deleteCommand.value(r_instance, moduleRef);
 				},
-				\set -> { |self, moduleParameterRef, value|
+				\set -> { |self, moduleParameterRef, value| // TODO: compare with paramset - this turns into "set_" whereas paramset has "set__"
 					setCommand.value(r_instance, moduleParameterRef, value);
 				},
 				\bulkset -> { |self, bundle|
@@ -1439,7 +1439,7 @@ namespaces.param_ui_manager = {
 			~screen.clear_();
 			~screen.font_size_(8);
 
-			(((cursor-2) min: (~params[\count]-params_per_page))..((cursor+3) min: (~params[\count]))).do { |param_index, index|
+			((-2) max: (((cursor-2) min: (~params[\count]-params_per_page)))..((cursor+3) min: (~params[\count]))).do { |param_index, index|
 				case
 				{param_index == -2} {
 					redraw_row_label.value("PARAMETERS", 1 + row_height, lo_level);
@@ -1467,17 +1467,16 @@ namespaces.param_ui_manager = {
 					};
 				}
 			};
+
+			~screen.update_();
 		};
 
 		param_ui.key_ = { |self, n, z|
-			case
-			{(n == 2) and: (z == 1)} {
-				self[\cursor] = (self[\cursor] - 1) max: 0;
-			}
-			{(n == 3) and: (z == 1)} {
-				self[\cursor] = (self[\cursor] + 1) min: (~params[\count]-1);
-			}
-			;
+			~redraw.value();
+		};
+
+		param_ui.enc_ = { |self, n, delta|
+			~redraw.value();
 		};
 
 		param_ui.kbdkey_ = { |self, keycode, z|
@@ -1497,6 +1496,7 @@ namespaces.param_ui_manager = {
 				param.delta_(1);
 			}
 			;
+			~redraw.value();
 		};
 
 		param_ui.mouse_ = { |self, what, args|
@@ -1524,6 +1524,7 @@ namespaces.param_ui_manager = {
 				var x_delta = args[0], y_delta = args[1];
 				self.mouse_wheel_(x_delta, y_delta);
 			};
+			~redraw.value();
 		};
 
 		param_ui.within_param_value_bounds_ =
@@ -1581,7 +1582,7 @@ namespaces.param_ui_manager = {
 			{ self.active == 'param_ui_row' } {
 				if (mouse_move_delta.y != 0) {
 					{ |cursor, param_ui_row, delta|
-						var param_index = (((cursor-2) min: (~params[\count]-params_per_page))..((cursor+3) min: (~params[\count])))[param_ui_row];
+						var param_index = ((-2) max: (((cursor-2) min: (~params[\count]-params_per_page)))..((cursor+3) min: (~params[\count])))[param_ui_row];
 						var param_in_focus = ~params[\params][param_index];
 
 						var fine = false; // TODO
@@ -1607,7 +1608,7 @@ namespaces.param_ui_manager = {
 				case
 				{self.focus == 'param_ui_row'} {
 					{ |cursor, param_ui_row, delta|
-						var param_index = (((cursor-2) min: (~params[\count]-params_per_page))..((cursor+3) min: (~params[\count])))[param_ui_row];
+						var param_index = ((-2) max: (((cursor-2) min: (~params[\count]-params_per_page)))..((cursor+3) min: (~params[\count])))[param_ui_row];
 						var param_in_focus = ~params[\params][param_index];
 
 						var fine = false; // TODO
@@ -1621,7 +1622,7 @@ namespaces.param_ui_manager = {
 							};
 							param_in_focus.delta_(delta/divisor);
 						};
-					}.value(self[\cursor], self[\param_ui_row]-1, (-1) * y_delta);
+					}.value(self[\cursor], self[\param_ui_row]-1, y_delta);
 				};
 			};
 		};
@@ -1741,17 +1742,32 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 							case
 								{ key_state[0].not and: shift_pressed }
 								{
+									script_env.use {
+										if (~norns[\showing_param_ui].asBoolean) {
+											switch_to_script.value();
+											~norns[\showing_param_ui] = false;
+										} {
+											switch_to_params_ui.value();
+											~norns[\showing_param_ui] = true;
+										};
+									};
+/*
+	TODO
 									key_state[0] = true;
 									script_env.use {
 										~key.value(1, 1);
 									};
+*/
 								}
 								{ key_state[0] and: shift_pressed.not }
 								{
+/*
+	TODO
 									key_state[0] = false;
 									script_env.use {
 										~key.value(1, 0);
 									};
+*/
 								}
 							;
 
@@ -1806,6 +1822,42 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 							};
 						})
 						;
+				};
+
+				var switch_to_script = {
+					var saved_script_hooks = ~norns[\saved_script_hooks];
+					~redraw = saved_script_hooks[\redraw];
+					~enc = saved_script_hooks[\enc];
+					~key = saved_script_hooks[\key];
+					~mouse = saved_script_hooks[\mouse];
+					~kbdkey = saved_script_hooks[\kbdkey];
+					~norns[\saved_script_hooks] = nil;
+					~redraw.value();
+				};
+
+				var switch_to_params_ui = {
+					~norns[\saved_script_hooks] = (
+						redraw: ~redraw,
+						enc: ~enc,
+						key: ~key,
+						mouse: ~mouse,
+						kbdkey: ~kbdkey,
+					);
+					~redraw = {
+						~param_ui.redraw_();
+					};
+					~enc = { |index, delta|
+						~param_ui.enc_(index, delta);
+					};
+					~key = { |index, state|
+						~param_ui.key_(index, state);
+					};
+					~mouse = { |what ... args|
+						~param_ui.mouse_(what, args);
+					};
+					~kbdkey = { |keycode, state|
+						~param_ui.kbdkey_(keycode, state);
+					};
 				};
 
 				var mouse_pressed_pos;
@@ -1933,7 +1985,7 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 								script_instance[\engine_free_func] = {
 									free_engine.value(r_engine_instance);
 								};
-								"R engine loaded".debug;
+								"R engine loaded".inform;
 								completeFunc.value;
 							};
 						}
@@ -1951,12 +2003,12 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 								script_instance[\engine_free_func] = {
 									free_engine.value(ack_engine_instance);
 								};
-								"Ack engine loaded".debug;
+								"Ack engine loaded".inform;
 								completeFunc.value;
 							};
 						}
 						{ true } {
-							"not supported engine".debug;
+							"not supported engine".error;
 							completeFunc.value;
 						};
 					}.value;

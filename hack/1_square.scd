@@ -11,7 +11,7 @@ var include_relative = { |relative_path|
 
 var r_engine_root_relative = ".." +/+ ".." +/+ "r";
 
-var lib_root_relative = ".." +/+ "lib";
+var lib_root_relative = "lib";
 var norns_engine_tester = include_relative.value(lib_root_relative +/+ "norns_engine_tester.scd");
 var start_script = norns_engine_tester['start_script'];
 var script_name = PathName(thisProcess.nowExecutingPath).fileNameWithoutExtension;
@@ -22,7 +22,8 @@ start_script.value(script_name) {
 	var formatters = include_relative.value(lib_root_relative +/+ "formatters.scd");
 
 	var rrrr = include_relative.value(r_engine_root_relative +/+ "lib" +/+ "r.scd");
-	var r_specs = rrrr[\specs];
+	var rrrr_lib = rrrr[\lib];
+	var r_specs = rrrr_lib[\specs];
 
 	~engine.name = 'R';
 

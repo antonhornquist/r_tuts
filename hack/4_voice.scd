@@ -3,7 +3,7 @@ var include_relative = { |relative_path|
 	var path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
 	if (File.exists(path)) {
 		var result = this.executeFile(path);
-		if (result.isNil) { Error("error importing %".format(path)).throw; } { result }; // TODO: adopt in other places too
+		if (result.isNil) { Error("error importing %".format(path)).throw; } { result };
 	} {
 		Error("include_relative: file % does not exist".format(path.quote)).throw;
 	};
@@ -11,7 +11,7 @@ var include_relative = { |relative_path|
 
 var r_engine_root_relative = ".." +/+ ".." +/+ "r";
 
-var lib_root_relative = ".." +/+ "lib";
+var lib_root_relative = "lib";
 var norns_engine_tester = include_relative.value(lib_root_relative +/+ "norns_engine_tester.scd");
 var start_script = norns_engine_tester['start_script'];
 var script_name = PathName(thisProcess.nowExecutingPath).fileNameWithoutExtension;
@@ -22,7 +22,8 @@ start_script.value(script_name) {
 	var formatters = include_relative.value(lib_root_relative +/+ "formatters.scd");
 
 	var rrrr = include_relative.value(r_engine_root_relative +/+ "lib" +/+ "r.scd");
-	var r_specs = rrrr[\specs];
+	var rrrr_lib = rrrr[\lib];
+	var r_specs = rrrr_lib[\specs];
 
 	~engine.name = 'R';
 
@@ -80,11 +81,11 @@ start_script.value(script_name) {
 		~midi_device.event = { |data|
 			case
 			{ data.type == 'note_on' } {
-				~params.set_("note", data.note);
-				~params.set_("gate", 1);
+				~params.set__("note", data.note);
+				~params.set__("gate", 1);
 			}
 			{ data.type == 'note_off' } {
-				~params.set_("gate", 0);
+				~params.set__("gate", 0);
 			}
 			{ (data.type == 'cc') and: (data.num ==1) } {
 				~params.set_raw_("filter_frequency", data.val/127);
@@ -368,10 +369,10 @@ start_script.value(script_name) {
 		if (n == 3) {
 			case
 			{z == 1} {
-				~params.set_("gate", 1);
+				~params.set__("gate", 1);
 			}
 			{z == 0} {
-				~params.set_("gate", 0);
+				~params.set__("gate", 0);
 			};
 		};
 	};
