@@ -4,14 +4,43 @@ var include_relative = { |relative_path|
 	var path = (PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
 	if (File.exists(path)) {
 		var result = this.executeFile(path);
-		if (result.isNil) { Error("error importing %".format(path)).throw; } { result }; // TODO: adopt in other places too
+		if (result.isNil) { Error("error importing %".format(path)).throw; } { result };
 	} {
 		Error("include_relative: file % does not exist".format(path.quote)).throw;
 	};
 };
 
-var r_engine_root = ".." +/+ ".." +/+ ".." +/+ "r";
-var ack_engine_root = ".." +/+ ".." +/+ ".." +/+ "ack";
+var include_absolute = { |absolute_path|
+	var path = absolute_path.standardizePath;
+	if (File.exists(path)) {
+		var result = this.executeFile(path);
+		if (result.isNil) { Error("error importing %".format(path)).throw; } { result };
+	} {
+		Error("include_absolute: file % does not exist".format(path.quote)).throw;
+	};
+};
+
+var include_engine_dependency = { |engine_name|
+	var engine_root = engine_paths[engine_name.asSymbol][\absolute_path];
+	if (File.exists(engine_root)) {
+		include_absolute.value(engine_root +/+ "lib" +/+ (engine_name.asString ++ ".scd"));
+	} {
+		Error("include_engine_dependency: FAILED. expected engine % installed at %".format(engine_name, engine_root.quote)).throw; // TODO: ugly path
+	};
+};
+
+var lookup_absolute_path = { |relative_path|
+	(PathName(thisProcess.nowExecutingPath).pathOnly +/+ relative_path).standardizePath;
+};
+
+var engine_paths = (
+	ack: (
+		relative_path: ".." +/+ ".." +/+ ".." +/+ "ack"
+	),
+	r: (
+		relative_path: ".." +/+ ".." +/+ ".." +/+ "r"
+	),
+).collect { |dict, engine_name| dict[\absolute_path] = lookup_absolute_path.value(dict[\relative_path])};
 
 var namespaces = ();
 
@@ -104,81 +133,90 @@ namespaces.arc_device_manager = {
 namespaces.midi_device_manager = {
 	var init_midi_device_manager = { |script_env|
 		var midi_device_manager = ();
+
+		var route_incoming_midi_message = { |midi_device, message|
+			script_env.use {
+				if (~device_to_enc_key_mapper.handle_midi_(message).isNil) {
+					midi_device[\event].value( // TODO: change to event_, if possible without introducing self arg
+						message
+					);
+				}
+			};
+		};
+
+		var midi_device;
+
+		midi_device = ();
+
+		midi_device.device_ = { |self|
+			if (MIDIClient.sources.notEmpty or: MIDIClient.destinations.notEmpty) {
+				MIDIClient
+			}
+		};
+
+		MIDIIn.connectAll;
+
+		midi_device_manager['__midi_funcs__'] = midi_device_manager['__midi_funcs__'].add(
+			MIDIFunc.cc(
+				{ |val, num, chan|
+					route_incoming_midi_message.value(
+						midi_device,
+						(
+							type: 'cc',
+							val: val,
+							num: num,
+							chan: chan
+						)
+					);
+				}
+			)
+		);
+
+		midi_device_manager['__midi_funcs__'] = midi_device_manager['__midi_funcs__'].add(
+			MIDIFunc.noteOn(
+				{ |vel, note, chan|
+					route_incoming_midi_message.value(
+						midi_device,
+						(
+							type: 'note_on',
+							vel: vel,
+							note: note,
+							chan: chan
+						)
+					);
+				}
+			)
+		);
+
+		midi_device_manager['__midi_funcs__'] = midi_device_manager['__midi_funcs__'].add(
+			MIDIFunc.noteOff(
+				{ |vel, note, chan|
+					route_incoming_midi_message.value(
+						midi_device,
+						(
+							type: 'note_off',
+							vel: vel,
+							note: note,
+							chan: chan
+						)
+					);
+				}
+			)
+		);
+
 		midi_device_manager.connect_ = { |self, n|
-			var midi_device;
-
-			MIDIIn.connectAll;
-
 			n = n ? 1;
 
 			if (n != 1) {
 				Error("multiple midi devices are not supported").throw
 			};
 
-			midi_device = ();
-
-			midi_device.device_ = { |self|
-				if (MIDIClient.sources.notEmpty or: MIDIClient.destinations.notEmpty) {
-					MIDIClient
-				}
-			};
 /*
 			TODO: midi_device out
 			midi_device.send_ = { |self, data|
 				MIDIOut....
 			};
 */
-
-			midi_device_manager['__midi_funcs__'] = midi_device_manager['__midi_funcs__'].add(
-				MIDIFunc.cc(
-					{ |val, num, chan|
-						script_env.use {
-							midi_device[\event].value( // TODO: change to event_, if possible without introducing self arg
-								(
-									type: 'cc',
-									val: val,
-									num: num,
-									chan: chan
-								)
-							);
-						};
-					}
-				)
-			);
-
-			midi_device_manager['__midi_funcs__'] = midi_device_manager['__midi_funcs__'].add(
-				MIDIFunc.noteOn(
-					{ |vel, note, chan|
-						script_env.use {
-							midi_device[\event].value(
-								(
-									type: 'note_on',
-									vel: vel,
-									note: note,
-									chan: chan
-								)
-							);
-						};
-					}
-				)
-			);
-
-			midi_device_manager['__midi_funcs__'] = midi_device_manager['__midi_funcs__'].add(
-				MIDIFunc.noteOff(
-					{ |vel, note, chan|
-						script_env.use {
-							midi_device[\event].value(
-								(
-									type: 'note_off',
-									vel: vel,
-									note: note,
-									chan: chan
-								)
-							);
-						};
-					}
-				)
-			);
 
 			midi_device;
 		};
@@ -1056,9 +1094,8 @@ namespaces.paramset = {
 	module;
 }.value;
 
-// TODO: load on demand
-namespaces.ack_engine = {
-	var ack = include_relative.value(ack_engine_root +/+ "lib" +/+ "ack.scd");
+namespaces.ack_engine_loader = {
+	var ack = include_engine_dependency.value(\ack);
 
 	var init = ack[\init];
 	var free = ack[\free];
@@ -1099,7 +1136,6 @@ namespaces.ack_engine = {
 
 	// server booted assumed
 	var load_engine = {
-		var tmp;
 		var ack_instance = init.value(
 			(
 				autostartServer: false,
@@ -1227,11 +1263,10 @@ namespaces.ack_engine = {
 	];
 
 	module
-}.value;
+};
 
-// TODO: load on demand
-namespaces.r_engine = {
-	var rrrr = include_relative.value(r_engine_root +/+ "lib" +/+ "r.scd");
+namespaces.r_engine_loader = {
+	var rrrr = include_engine_dependency.value(\r);
 
 	var init = rrrr[\init];
 	var free = rrrr[\free];
@@ -1388,7 +1423,7 @@ namespaces.r_engine = {
 	];
 
 	module
-}.value;
+};
 
 namespaces.param_ui_manager = {
 
@@ -1476,24 +1511,30 @@ namespaces.param_ui_manager = {
 		};
 
 		param_ui.enc_ = { |self, n, delta|
+			case
+			{n == 2} {
+				param_ui.cursor_delta_(delta);
+			}
+			{n == 3} {
+				param_ui.selected_param_delta_(delta);
+			}
+			;
 			~redraw.value();
 		};
 
 		param_ui.kbdkey_ = { |self, keycode, z|
 			case
 			{(keycode == 40) and: (z == 1)} {
-				self[\cursor] = (self[\cursor] + 1) min: (~params[\count]-1);
+				param_ui.cursor_delta_(1);
 			}
 			{(keycode == 38) and: (z == 1)} {
-				self[\cursor] = (self[\cursor] - 1) max: 0;
+				param_ui.cursor_delta_(-1);
 			}
 			{(keycode == 37) and: (z == 1)} {
-				var param = ~params[\params][self[\cursor]];
-				param.delta_(-1);
+				param_ui.selected_param_delta_(-1);
 			}
 			{(keycode == 39) and: (z == 1)} {
-				var param = ~params[\params][self[\cursor]];
-				param.delta_(1);
+				param_ui.selected_param_delta_(1);
 			}
 			;
 			~redraw.value();
@@ -1525,6 +1566,17 @@ namespaces.param_ui_manager = {
 				self.mouse_wheel_(x_delta, y_delta);
 			};
 			~redraw.value();
+		};
+
+		param_ui.cursor_delta_ =
+		{ |self, delta|
+			self[\cursor] = (self[\cursor] + delta) min: (~params[\count]-1) max: 0;
+		};
+
+		param_ui.selected_param_delta_ =
+		{ |self, delta|
+			var param = ~params[\params][self[\cursor]];
+			param.delta_(delta);
 		};
 
 		param_ui.within_param_value_bounds_ =
@@ -1642,8 +1694,73 @@ namespaces.param_ui_manager = {
 		param_ui;
 	};
 
+	// TODO: implement free_param_ui_manager
+
 	var module = IdentityDictionary[
 		\init_param_ui_manager -> init_param_ui_manager
+	];
+
+	module;
+}.value;
+
+namespaces.device_to_enc_key_mapper = {
+
+	var init_device_to_enc_key_mapper = { |script_env|
+		var mapper = ();
+		mapper.handle_midi_ = { |self, message|
+			if ((message[\chan] == 0) and: (message[\type] == \cc)) {
+				var val = message[\val];
+				var num = message[\num];
+				case
+				{ (num == 1) and: ([1, 127].includes(val)) } {
+					script_env.use {
+						~enc.value(2, if (val == 127, -1, 1));
+					}
+				}
+				{ (num == 2) and: ([1, 127].includes(val)) } {
+					script_env.use {
+						~enc.value(3, if (val == 127, -1, 1));
+					}
+				}
+				{ (num == 4) and: ([1, 127].includes(val)) } {
+					script_env.use {
+						~enc.value(1, if (val == 127, -1, 1));
+					}
+				}
+				{ (num == 50) and: ([0, 127].includes(val)) } {
+					script_env.use {
+						~key.value(2, if (val == 127, 1, 0));
+					}
+				}
+				{ (num == 51) and: ([0, 127].includes(val)) } {
+					script_env.use {
+						~key.value(3, if (val == 127, 1, 0));
+					}
+				}
+				{ (num == 48) and: ([0, 127].includes(val)) } {
+					if (val == 127) {
+						script_env.use {
+							if (~norns[\showing_param_ui].asBoolean) {
+								~switch_to_script.value();
+								~norns[\showing_param_ui] = false;
+							} {
+								~switch_to_params_ui.value();
+								~norns[\showing_param_ui] = true;
+							};
+						};
+					};
+				}
+				;
+			} {
+				nil
+			};
+		};
+	};
+
+	// TODO: implement free_device_to_enc_key_mapper
+
+	var module = IdentityDictionary[
+		\init_device_to_enc_key_mapper -> init_device_to_enc_key_mapper
 	];
 
 	module;
@@ -1680,7 +1797,11 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 
 		var param_ui_manager = namespaces[\param_ui_manager];
 		var init_param_ui_manager = param_ui_manager[\init_param_ui_manager];
-		var free_param_ui_manager = param_ui_manager[\free_param_ui_manager];
+		var free_param_ui_manager = param_ui_manager[\free_param_ui_manager]; // TODO
+
+		var device_to_enc_key_mapper = namespaces[\device_to_enc_key_mapper];
+		var init_device_to_enc_key_mapper = device_to_enc_key_mapper[\init_device_to_enc_key_mapper];
+		var free_device_to_enc_key_mapper = device_to_enc_key_mapper[\free_device_to_enc_key_mapper]; // TODO
 
 		var scale = 6;
 		var screen_width = 128 * scale;
@@ -1747,7 +1868,7 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 											switch_to_script.value();
 											~norns[\showing_param_ui] = false;
 										} {
-											switch_to_params_ui.value();
+											~switch_to_params_ui.value();
 											~norns[\showing_param_ui] = true;
 										};
 									};
@@ -1858,6 +1979,7 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 					~kbdkey = { |keycode, state|
 						~param_ui.kbdkey_(keycode, state);
 					};
+					~redraw.value();
 				};
 
 				var mouse_pressed_pos;
@@ -1938,6 +2060,19 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 					pr_stop_script.value(script_instance);
 				};
 
+				var load_engine_library_lazily = { |engine_name|
+					var engine_namespace_sym = (engine_name.asString ++ "_engine").asSymbol;
+					var engine_namespace_string = engine_namespace_sym.asString;
+					if (namespaces[engine_namespace_sym].notNil) {
+						"in load_engine_library_lazily: using cached % engine library".format(engine_name.asString).inform;
+						namespaces[engine_namespace_sym]
+					} {
+						"in load_engine_library_lazily: loading % engine library anew".format(engine_name.asString).inform;
+						namespaces[engine_namespace_sym] = namespaces[(engine_namespace_string ++ "_loader").asSymbol].value;
+						namespaces[engine_namespace_sym];
+					};
+				};
+
 				script_env = Environment.make {
 					~norns = (
 						state: (
@@ -1954,6 +2089,10 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 					~arc = init_arc_device_manager.value(currentEnvironment);
 					~grid = init_grid_device_manager.value(currentEnvironment);
 					~param_ui = init_param_ui_manager.value(currentEnvironment);
+					~device_to_enc_key_mapper = init_device_to_enc_key_mapper.value(currentEnvironment);
+
+					~switch_to_script = switch_to_script;
+					~switch_to_params_ui = switch_to_params_ui;
 
 					defer {
 						setup_window_mouse_and_key_hooks.value;
@@ -1972,11 +2111,11 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 	
 						case
 						{~engine[\name] == 'R' } {
-							s.waitForBoot {
-								var r_engine = namespaces[\r_engine];
-								var load_engine = r_engine[\load_engine];
-								var free_engine = r_engine[\free_engine];
+							var r_engine = load_engine_library_lazily.value(\r);
+							var load_engine = r_engine[\load_engine];
+							var free_engine = r_engine[\free_engine];
 
+							s.waitForBoot {
 								var r_engine_instance = load_engine.value;
 								var engine, polls;
 								# engine, poll_manager = setup_engine_globals.value(r_engine_instance[\commands], r_engine_instance[\polls]);
@@ -1990,11 +2129,11 @@ if (~include_nel_libraries.asBoolean) { // TODO: ugly hack, get around using glo
 							};
 						}
 						{~engine[\name] == 'Ack' } {
-							s.waitForBoot {
-								var ack_engine = namespaces[\ack_engine];
-								var load_engine = ack_engine[\load_engine];
-								var free_engine = ack_engine[\free_engine];
+							var ack_engine = load_engine_library_lazily.value(\ack);
+							var load_engine = ack_engine[\load_engine];
+							var free_engine = ack_engine[\free_engine];
 
+							s.waitForBoot {
 								var ack_engine_instance = load_engine.value;
 								var engine, polls;
 								# engine, poll_manager = setup_engine_globals.value(ack_engine_instance[\commands], ack_engine_instance[\polls]);
