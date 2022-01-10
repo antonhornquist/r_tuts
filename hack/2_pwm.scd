@@ -11,151 +11,152 @@ var include_relative = { |relative_path|
 
 var r_engine_root_relative = ".." +/+ ".." +/+ "r";
 
-var lib_root_relative = "lib";
-var norns_engine_tester = include_relative.value(lib_root_relative +/+ "norns_engine_tester.scd");
+var norns_engine_tester = include_relative.value(r_engine_root_relative +/+ "hack" +/+ "lib" +/+ "norns_engine_tester.scd");
 var start_script = norns_engine_tester['start_script'];
 var script_name = PathName(thisProcess.nowExecutingPath).fileNameWithoutExtension;
 
 start_script.value(script_name) {
-	// scriptname: 2_pwm
-	// v1.1.0 @jah
-	var formatters = include_relative.value(lib_root_relative +/+ "formatters.scd");
 
-	var rrrr = include_relative.value(r_engine_root_relative +/+ "lib" +/+ "r.scd");
-	var rrrr_lib = rrrr[\lib];
-	var r_specs = rrrr_lib[\specs];
+// scriptname: 2_pwm
+// v1.1.0 @jah
+var formatters = include_relative.value("lib" +/+ "formatters.scd");
 
-	~engine.name = 'R';
+var rrrr = include_relative.value(r_engine_root_relative +/+ "lib" +/+ "r.scd");
+var rrrr_lib = rrrr[\lib];
+var r_specs = rrrr_lib[\specs];
 
-	~init = {
-		~engine.new_("LFO", "MultiLFO");
-		~engine.new_("Osc", "PulseOsc");
-		~engine.new_("Amplifier", "MGain");
-		~engine.new_("SoundOut", "SoundOut");
+~engine.name = 'R';
 
-		~engine.connect_("LFO/Sine", "Osc*PWM");
-		~engine.connect_("Osc/Out", "Amplifier*In");
-		~engine.connect_("Amplifier/Out", "SoundOut*Left");
-		~engine.connect_("Amplifier/Out", "SoundOut*Right");
+~init = {
+	~engine.new_("LFO", "MultiLFO");
+	~engine.new_("Osc", "PulseOsc");
+	~engine.new_("Amplifier", "MGain");
+	~engine.new_("SoundOut", "SoundOut");
 
-		~add_osc_range_param.value();
-		~add_lfo_frequency_param.value();
-		~add_lfo_to_osc_pwm_param.value();
-		~add_osc_tune_param.value();
-		~add_osc_pulsewidth_param.value();
-		~add_output_level_param.value();
+	~engine.connect_("LFO/Sine", "Osc*PWM");
+	~engine.connect_("Osc/Out", "Amplifier*In");
+	~engine.connect_("Amplifier/Out", "SoundOut*Left");
+	~engine.connect_("Amplifier/Out", "SoundOut*Right");
 
-		~params.bang_();
+	~add_osc_range_param.value();
+	~add_lfo_frequency_param.value();
+	~add_lfo_to_osc_pwm_param.value();
+	~add_osc_tune_param.value();
+	~add_osc_pulsewidth_param.value();
+	~add_output_level_param.value();
+
+	~params.bang_();
+};
+
+~add_osc_range_param = {
+	~params.add_(
+		(
+			type: "control",
+			id: "osc_range",
+			name: "Osc.Range",
+			controlspec: r_specs['PulseOsc']['Range'],
+			action: { |value| ~engine.set_("Osc.Range", value) }
+		)
+	);
+};
+
+~add_lfo_frequency_param = {
+	var spec;
+	spec = r_specs['MultiLFO']['Frequency'].copy();
+	spec.default = 0.2;
+
+	~params.add_(
+		(
+			type: "control",
+			id: "lfo_frequency",
+			name: "LFO.Frequency",
+			controlspec: spec,
+			formatter: formatters.round_(0.001),
+			action: { |value| ~engine.set_("LFO.Frequency", value) }
+		)
+	);
+};
+
+~add_lfo_to_osc_pwm_param = {
+	var spec;
+	spec = r_specs['PulseOsc']['PWM'].copy();
+	spec.default = 0.6;
+
+	~params.add_(
+		(
+			type: "control",
+			id: "lfo_to_osc_pwm",
+			name: "LFO > Osc.PWM",
+			controlspec: spec,
+			formatter: formatters['percentage'],
+			action: { |value| ~engine.set_("Osc.PWM", value) }
+		)
+	);
+};
+
+~add_osc_tune_param = {
+	~params.add_(
+		(
+			type: "control",
+			id: "osc_tune",
+			name: "Osc.Tune",
+			controlspec: r_specs['PulseOsc']['Tune'],
+			action: { |value| ~engine.set_("Osc.Tune", value) }
+		)
+	);
+};
+
+~add_osc_pulsewidth_param = {
+	~params.add_(
+		(
+			type: "control",
+			id: "osc_pulsewidth",
+			name: "Osc.PulseWidth",
+			controlspec: r_specs['PulseOsc']['PulseWidth'],
+			formatter: formatters['percentage'],
+			action: { |value| ~engine.set_("Osc.PulseWidth", value) }
+		)
+	);
+};
+
+~add_output_level_param = {
+	var spec = r_specs['MGain']['Gain'].copy;
+	spec.default = -10;
+
+	~params.add_(
+		(
+			type: "control",
+			id: "output_level",
+			name: "Amplifier.Gain",
+			controlspec: spec,
+			formatter: formatters.round_(0.1),
+			action: { |value| ~engine.set_("Amplifier.Gain", value) }
+		)
+	);
+};
+
+~redraw = {
+	~screen.clear_();
+	~screen.level_(15);
+	~screen.move_(1, 10);
+	~screen.text_("PWM");
+	~screen.move_(1, 30);
+	~screen.text_("See params in menu");
+	~screen.update_();
+};
+
+~enc = { |n, delta|
+	case
+	{n == 1} {
+		~params.delta_("output_level", delta);
+	}
+	{n == 2} {
+		~params.delta_("lfo_frequency", delta);
+	}
+	{n == 3} {
+		~params.delta_("lfo_to_osc_pwm", delta);
 	};
+};
 
-	~add_osc_range_param = {
-		~params.add_(
-			(
-				type: "control",
-				id: "osc_range",
-				name: "Osc.Range",
-				controlspec: r_specs['PulseOsc']['Range'],
-				action: { |value| ~engine.set_("Osc.Range", value) }
-			)
-		);
-	};
-
-	~add_lfo_frequency_param = {
-		var spec;
-		spec = r_specs['MultiLFO']['Frequency'].copy();
-		spec.default = 0.2;
-
-		~params.add_(
-			(
-				type: "control",
-				id: "lfo_frequency",
-				name: "LFO.Frequency",
-				controlspec: spec,
-				formatter: formatters.round_(0.001),
-				action: { |value| ~engine.set_("LFO.Frequency", value) }
-			)
-		);
-	};
-
-	~add_lfo_to_osc_pwm_param = {
-		var spec;
-		spec = r_specs['PulseOsc']['PWM'].copy();
-		spec.default = 0.6;
-
-		~params.add_(
-			(
-				type: "control",
-				id: "lfo_to_osc_pwm",
-				name: "LFO > Osc.PWM",
-				controlspec: spec,
-				formatter: formatters['percentage'],
-				action: { |value| ~engine.set_("Osc.PWM", value) }
-			)
-		);
-	};
-
-	~add_osc_tune_param = {
-		~params.add_(
-			(
-				type: "control",
-				id: "osc_tune",
-				name: "Osc.Tune",
-				controlspec: r_specs['PulseOsc']['Tune'],
-				action: { |value| ~engine.set_("Osc.Tune", value) }
-			)
-		);
-	};
-
-	~add_osc_pulsewidth_param = {
-		~params.add_(
-			(
-				type: "control",
-				id: "osc_pulsewidth",
-				name: "Osc.PulseWidth",
-				controlspec: r_specs['PulseOsc']['PulseWidth'],
-				formatter: formatters['percentage'],
-				action: { |value| ~engine.set_("Osc.PulseWidth", value) }
-			)
-		);
-	};
-
-	~add_output_level_param = {
-		var spec = r_specs['MGain']['Gain'].copy;
-		spec.default = -10;
-
-		~params.add_(
-			(
-				type: "control",
-				id: "output_level",
-				name: "Amplifier.Gain",
-				controlspec: spec,
-				formatter: formatters.round_(0.1),
-				action: { |value| ~engine.set_("Amplifier.Gain", value) }
-			)
-		);
-	};
-
-	~redraw = {
-		~screen.clear_();
-		~screen.level_(15);
-		~screen.move_(1, 10);
-		~screen.text_("PWM");
-		~screen.move_(1, 30);
-		~screen.text_("See params in menu");
-		~screen.update_();
-	};
-
-	~enc = { |n, delta|
-		case
-		{n == 1} {
-			~params.delta_("output_level", delta);
-		}
-		{n == 2} {
-			~params.delta_("lfo_frequency", delta);
-		}
-		{n == 3} {
-			~params.delta_("lfo_to_osc_pwm", delta);
-		};
-	};
 };
 )
